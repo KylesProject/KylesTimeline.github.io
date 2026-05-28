@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Canada in World War II: An Interactive Timeline</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400&family=Lora:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg:           #0e1117;
+      --surface:      #161b27;
+      --surface-lt:   #1e2535;
+      --gold:         #c9a84c;
+      --gold-faint:   rgba(201,168,76,0.10);
+      --gold-line:    rgba(201,168,76,0.30);
+      --cream:        #e8d5b7;
+      --text:         #b0a898;
+      --red:          #8b2635;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Lora', Georgia, serif;
+      line-height: 1.78;
+    }
+
+    /* ---- HEADER ---- */
+    .site-header {
+      text-align: center;
+      padding: 80px 28px 60px;
+      border-bottom: 1px solid var(--gold-line);
+      background: linear-gradient(180deg, rgba(201,168,76,0.06) 0%, transparent 100%);
+      position: relative;
+    }
+
+    .eyebrow {
+      font-size: 10px;
+      letter-spacing: 5px;
+      text-transform: uppercase;
+      color: var(--gold);
+      margin-bottom: 18px;
+      opacity: 0.75;
+    }
+
+    .site-header h1 {
+      font-family: 'Playfair Display', serif;
+      font-size: clamp(2rem, 5.5vw, 4rem);
+      font-weight: 900;
+      color: var(--cream);
+      line-height: 1.1;
+      margin-bottom: 10px;
+      letter-spacing: -0.5px;
+    }
+
+    .site-header h1 span { color: var(--gold); }
+
+    .range {
+      font-size: 0.8rem;
+      letter-spacing: 3px;
+      color: rgba(201,168,76,0.5);
+      margin-bottom: 40px;
+    }
+
+    .inquiry-card {
+      max-width: 700px;
+      margin: 0 auto;
+      padding: 22px 28px;
+      background: var(--gold-faint);
+      border: 1px solid rgba(201,168,76,0.22);
+      border-left: 4px solid var(--gold);
+      text-align: left;
+    }
+
+    .inquiry-card .micro {
+      font-size: 9px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: var(--gold);
+      margin-bottom: 9px;
+      opacity: 0.8;
+    }
+
+    .inquiry-card p {
+      font-family: 'Playfair Display', serif;
+      font-style: italic;
+      font-size: 1.05rem;
+      color: var(--cream);
+      line-height: 1.6;
+    }
+
+    /* ---- TIMELINE WRAPPER ---- */
+    .tl-outer {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 70px 18px 110px;
+      position: relative;
+    }
+
+    .tl-spine {
+      position: absolute;
+      left: 50%;
+      top: 70px;
+      bottom: 110px;
+      width: 2px;
+      transform: translateX(-50%);
+      background: linear-gradient(180deg,
+        transparent 0%,
+        var(--gold) 8%,
+        var(--gold) 92%,
+        transparent 100%);
+      opacity: 0.28;
+    }
+
+    /* ---- EVENT ROW (grid) ---- */
+    .ev-row {
+      display: grid;
+      grid-template-columns: 1fr 64px 1fr;
+      margin-bottom: 36px;
+      align-items: start;
+      opacity: 0;
+      transform: translateY(18px);
+      transition: opacity 0.5s ease, transform 0.5s ease;
+    }
+
+    .ev-row.vis { opacity: 1; transform: none; }
+
+    .ev-left  { grid-column: 1; padding-right: 22px; }
+    .ev-mid   { grid-column: 2; display: flex; flex-direction: column; align-items: center; padding-top: 14px; }
+    .ev-right { grid-column: 3; padding-left: 22px; }
+
+    /* ---- DOT ---- */
+    .dot {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: var(--surface);
+      border: 2px solid var(--gold);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Playfair Display', serif;
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--gold);
+      cursor: pointer;
+      transition: background 0.25s, color 0.25s, box-shadow 0.25s;
+      z-index: 2;
+      flex-shrink: 0;
+      box-shadow: 0 0 0 5px rgba(201,168,76,0.07);
+      user-select: none;
+    }
+
+    .dot:hover            { box-shadow: 0 0 0 6px rgba(201,168,76,0.18), 0 0 16px rgba(201,168,76,0.3); }
+    .ev-row.open .dot     { background: var(--gold); color: #0e1117; box-shadow: 0 0 0 6px rgba(201,168,76,0.18), 0 0 20px rgba(201,168,76,0.4); }
+
+    .yr-tag {
+      margin-top: 7px;
+      font-size: 10px;
+      letter-spacing: 0.5px;
+      color: rgba(201,168,76,0.5);
+      white-space: nowrap;
+    }
+
+    /* ---- CARD ---- */
+    .ev-card {
+      background: var(--surface);
+      border: 1px solid rgba(201,168,76,0.12);
+      cursor: pointer;
+      transition: background 0.25s, border-color 0.25s;
+    }
+
+    .ev-left  .ev-card { border-right: 3px solid var(--gold); }
+    .ev-right .ev-card { border-left:  3px solid var(--gold); }
+
+    .ev-card:hover,
+    .ev-row.open .ev-card { background: var(--surface-lt); border-color: rgba(201,168,76,0.32); }
+
+    /* ---- CARD PREVIEW ---- */
+    .card-top { padding: 16px 18px; }
+
+    .card-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--cream);
+      line-height: 1.3;
+      margin-bottom: 5px;
+    }
+
+    .card-sub { font-size: 0.75rem; color: rgba(201,168,76,0.65); margin-bottom: 3px; }
+
+    .card-hint {
+      font-size: 0.68rem;
+      color: rgba(201,168,76,0.32);
+      font-style: italic;
+    }
+
+    .ev-row.open .card-hint { display: none; }
+
+    /* ---- EXPANDED SECTION ---- */
+    .card-body {
+      display: none;
+      border-top: 1px solid rgba(201,168,76,0.14);
+      animation: unfold 0.3s ease;
+    }
+
+    .ev-row.open .card-body { display: block; }
+
+    @keyframes unfold {
+      from { opacity: 0; transform: translateY(-8px); }
+      to   { opacity: 1; transform: none; }
+    }
+
+    .card-img {
+      width: 100%;
+      height: 195px;
+      object-fit: cover;
+      display: block;
+      filter: grayscale(25%) contrast(1.08) sepia(12%);
+    }
+
+    .img-fail {
+      width: 100%;
+      height: 195px;
+      background: var(--surface-lt);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      font-size: 2.5rem;
+      color: rgba(201,168,76,0.18);
+    }
+
+    .card-details { padding: 16px 18px 18px; }
+
+    .detail-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 14px 22px;
+      margin-bottom: 14px;
+    }
+
+    .d-item .d-label {
+      font-size: 9px;
+      letter-spacing: 2.5px;
+      text-transform: uppercase;
+      color: rgba(201,168,76,0.58);
+      margin-bottom: 3px;
+    }
+
+    .d-item .d-val {
+      font-size: 0.8rem;
+      color: var(--cream);
+      font-weight: 600;
+      line-height: 1.35;
+    }
+
+    .sig-label {
+      font-size: 9px;
+      letter-spacing: 2.5px;
+      text-transform: uppercase;
+      color: rgba(201,168,76,0.58);
+      margin-bottom: 9px;
+    }
+
+    .sig-body {
+      font-size: 0.86rem;
+      color: var(--text);
+      line-height: 1.82;
+    }
+
+    .close-wrap {
+      margin-top: 16px;
+      display: flex;
+      justify-content: flex-end;
+    }
+
+    .close-btn {
+      background: none;
+      border: 1px solid rgba(201,168,76,0.28);
+      color: rgba(201,168,76,0.65);
+      font-family: 'Lora', serif;
+      font-size: 10px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      padding: 5px 16px;
+      cursor: pointer;
+      transition: background 0.2s, color 0.2s;
+    }
+
+    .close-btn:hover { background: var(--gold-faint); color: var(--gold); }
+
+    /* ---- FOOTER ---- */
+    .site-footer {
+      text-align: center;
+      padding: 36px 20px;
+      border-top: 1px solid var(--gold-line);
+      font-size: 0.75rem;
+      color: rgba(201,168,76,0.32);
+      letter-spacing: 1.5px;
+    }
+
+    /* ---- RESPONSIVE ---- */
+    @media (max-width: 680px) {
+      .tl-spine { left: 26px; }
+
+      .ev-row {
+        grid-template-columns: 54px 1fr;
+        grid-template-rows: auto;
+      }
+
+      .ev-mid   { grid-column: 1; grid-row: 1; }
+      .ev-left,
+      .ev-right { grid-column: 2; grid-row: 1; padding-left: 14px; padding-right: 0; }
+
+      .ev-left .ev-card  { border-right: none; border-left: 3px solid var(--gold); }
+    }
+  </style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="site-header">
+  <p class="eyebrow">Creating Canada, Second Edition</p>
+  <h1>Canada in <span>World War II</span></h1>
+  <p class="range">1929 &ndash; 1946 &nbsp;&#183;&nbsp; 15 Key Events</p>
+  <div class="inquiry-card">
+    <p class="micro">Inquiry Question</p>
+    <p>How did Canada's role in World War II help shape its identity as an independent nation?</p>
+  </div>
+</header>
+
+<!-- TIMELINE -->
+<main class="tl-outer">
+  <div class="tl-spine"></div>
+  <div id="tl"></div>
+</main>
+
+<!-- FOOTER -->
+<footer class="site-footer">
+  Source: Creating Canada, Second Edition &nbsp;&#183;&nbsp; 15 Events in Chronological Order
+</footer>
+
+<script>
+const events = [
+  {
+    num: 1,
+    year: "1929",
+    title: "The Great Depression",
+    date: "October 1929, through the 1930s",
+    location: "Canada-wide",
+    img: "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5e/Migrant_Mother_by_Dorothea_Lange.jpg/400px-Migrant_Mother_by_Dorothea_Lange.jpg",
+    sig: "The economic collapse left one in four Canadians without work. Shared hardship across the country created a collective resilience that would later power the war effort. Many young Canadians enlisted partly because the military offered steady pay, and the crisis forced Ottawa to take a stronger hand in managing national affairs, accelerating the push for a more self-governing and independent Canada."
+  },
+  {
+    num: 2,
+    year: "1933",
+    title: "The Rise of Fascism in Germany",
+    date: "1933, escalating through the decade",
+    location: "Germany",
+    img: "https://upload.wikimedia.org/wikipedia/commons/thumb/b/bb/Bundesarchiv_Bild_183-S72707%2C_N%C3%BCrnberg%2C_Reichsparteitag%2C_%C3%9Cbersicht_Gel%C3%A4nde.jpg/400px-Bundesarchiv_Bild_183-S72707%2C_N%C3%BCrnberg%2C_Reichsparteitag%2C_%C3%9Cbersicht_Gel%C3%A4nde.jpg",
+    sig: "As the Nazi Party dismantled German democracy, Canadians observed a continent sliding toward authoritarian rule. Witnessing this transformation sharpened the national sense of what values were worth protecting. The contrast between fascist ideology and the democratic principles Canada claimed to stand for helped build the moral foundation that would carry Canadians into the conflict ahead."
+  },
+  {
+    num: 3,
+    year: "1933",
+    title: "Adolf Hitler's Rise to Power",
+    date: "January 30, 1933",
+    location: "Berlin, Germany",
+    img: "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e1/Bundesarchiv_Bild_183-S38324%2C_Adolf_Hitler_retouched.jpg/400px-Bundesarchiv_Bild_183-S38324%2C_Adolf_Hitler_retouched.jpg",
+    sig: "Hitler's appointment as Chancellor transformed Germany from a fragile democracy into a dictatorship within months. For Canada, this set a countdown in motion. The growing threat would eventually force Parliament to make a foreign policy decision entirely on its own terms, separate from any automatic obligation to follow Britain, a decision that would test how far Canadian independence had truly come."
+  },
+  {
+    num: 4,
+    year: "1930s",
+    title: "Did Intolerance Grow in Canada?",
+    date: "Throughout the 1930s",
+    location: "Canada",
+    img: "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3a/MS_St._Louis.jpg/400px-MS_St._Louis.jpg",
+    sig: "While condemning fascism abroad, Canada refused Jewish refugees fleeing Nazi persecution, including turning away nearly 1,000 passengers aboard the MS St. Louis in 1939. This contradiction between Canada's stated values and its immigration policies revealed a national identity still under construction. The moral failure would return to haunt the country after the war and push it toward eventual reform."
+  },
+  {
+    num: 5,
+    year: "1938",
+    title: "Setting the Stage for War",
+    date: "September 29 to 30, 1938",
+    location: "Munich, Germany",
+    img: "https://upload.wikimedia.org/wikipedia/commons/thumb/7/7c/Bundesarchiv_Bild_183-R69173%2C_M%C3%BCnchener_Abkommen%2C_Staatschefs.jpg/400px-Bundesarchiv_Bild_183-R69173%2C_M%C3%BCnchener_Abkommen%2C_Staatschefs.jpg",
+    sig: "The Munich Agreement saw Britain and France hand Hitler the Sudetenland in a failed bid to prevent war. Canada followed the crisis closely, and when the appeasement strategy collapsed, Canadian parliamentarians were ready to debate the country's involvement as a matter of national choice rather than imperial duty. The episode made clear that any coming war would require Canada to choose its own course."
+  },
+  {
+    num: 6,
+    year: "1939",
+    title: "Canada Declares War",
+    date: "September 10, 1939",
+    location: "Ottawa, Canada",
+    img: "https://upload.wikimedia.org/wikipedia/commons/thumb/b/bc/Centre_Block%2C_Parliament_Hill.jpg/400px-Centre_Block%2C_Parliament_Hill.jpg",
+    sig: "A full week after Britain's declaration, Canada's Parliament voted independently to go to war with Germany. This was a direct exercise of the sovereignty granted under the 1931 Statute of Westminster. Unlike 1914, when Canada entered automatically alongside Britain, the country this time chose its own path through democratic vote. The declaration remains one of the clearest milestones in Canada's transition from British dominion to autonomous nation."
+  },
+  {
+    num: 7,
+    year: "1940",
+    title: "The Battle of Dunkirk",
+    date: "May 26 to June 4, 1940",
+    location: "Dunkirk, France",
+    img: "https://upload.wikimedia.org/wikipedia/commons/thumb/c/ce/Dunkirk_ww2_burning_oil_tanks.jpg/400px-Dunkirk_ww2_burning_oil_tanks.jpg",
+    sig: "The 1st Canadian Division served in the rearguard defense during the Dunkirk evacuation, helping cover the Allied retreat under intense German pressure. This was Canada's first major test of the war, and Canadian troops held their positions steadily, earning recognition as a reliable and capable force. It was the beginning of a military reputation that would grow through every campaign that followed."
+  },
+  {
+    num: 8,
+    year: "1940",
+    title: "The Battle of Britain",
+    date: "July 10 to October 31, 1940",
+    location: "Britain and the English Channel",
+    img: "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e2/Supermarine_Spitfire_Mk_Ia_P9374_2.jpg/400px-Supermarine_Spitfire_Mk_Ia_P9374_2.jpg",
+    sig: "No. 1 Squadron RCAF flew alongside the RAF to repel the Luftwaffe, becoming the first Canadian unit to engage in a major aerial campaign. Their performance helped establish Canada as an air power in its own right. The RCAF would expand dramatically through the war, growing into one of the largest air forces in the world and contributing to a distinct strand of Canadian military identity."
+  },
+  {
+    num: 9,
+    year: "1939-45",
+    title: "The Battle of the Atlantic",
+    date: "1939 to 1945",
+    location: "North Atlantic Ocean",
+    img: "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f5/Convoy_HX_300_1944.jpg/400px-Convoy_HX_300_1944.jpg",
+    sig: "The Royal Canadian Navy grew from 13 vessels at the war's start to over 400 ships by 1945, taking responsibility for a vast stretch of the Atlantic convoy route. This transformation from a minor coastal service into a major naval power demonstrated Canada's capacity to operate independently on a global scale. The RCN's work kept Britain supplied and was central to keeping the Allied war effort viable."
+  },
+  {
+    num: 10,
+    year: "1941",
+    title: "Hitler Turns on the Soviet Union",
+    date: "June 22, 1941",
+    location: "Eastern Europe",
+    img: "https://upload.wikimedia.org/wikipedia/commons/thumb/4/44/Bundesarchiv_Bild_101I-139-1112-17%2C_Russland%2C_Panzer_III_in_Ortschaft.jpg/400px-Bundesarchiv_Bild_101I-139-1112-17%2C_Russland%2C_Panzer_III_in_Ortschaft.jpg",
+    sig: "Operation Barbarossa opened a second enormous front and sharply increased Allied supply demands. Canada responded by accelerating war production across its factories and farms, sustaining multiple theatres simultaneously. This industrial output revealed Canada's strategic value beyond its combat role, cementing its standing as a full partner in the Allied effort and not simply a source of troops for British commanders."
+  },
+  {
+    num: 11,
+    year: "1941",
+    title: "Canada and the War in the Pacific",
+    date: "December 8 to 25, 1941",
+    location: "Hong Kong",
+    img: "https://upload.wikimedia.org/wikipedia/commons/thumb/a/ac/Hong_Kong_-_Kowloon_December_1941.jpg/400px-Hong_Kong_-_Kowloon_December_1941.jpg",
+    sig: "Nearly 2,000 Canadian soldiers were sent to defend Hong Kong and were captured when the colony fell on Christmas Day 1941. Held as prisoners under brutal conditions for years, they became symbols of both national sacrifice and of the price paid when a government sends its citizens into an unwinnable situation. The disaster prompted lasting debate about how Canada weighed its obligations to its own soldiers."
+  },
+  {
+    num: 12,
+    year: "1942",
+    title: "Disaster at Dieppe",
+    date: "August 19, 1942",
+    location: "Dieppe, France",
+    img: "https://upload.wikimedia.org/wikipedia/commons/thumb/5/52/Dieppe_Raid-_Bodies_on_the_beach_at_Dieppe%2C_19_August_1942._H13964.jpg/400px-Dieppe_Raid-_Bodies_on_the_beach_at_Dieppe%2C_19_August_1942._H13964.jpg",
+    sig: "More than 5,000 Canadians stormed the beaches at Dieppe. Nearly 900 were killed and over 1,900 were captured in a single morning. Despite the catastrophic human cost, every tactical lesson drawn from Dieppe was incorporated into D-Day planning two years later. Canada's heaviest single-day loss of the war directly shaped the operation that would eventually bring the conflict to an end."
+  },
+  {
+    num: 13,
+    year: "1944",
+    title: "Planning to Take Back Europe",
+    date: "June 6, 1944",
+    location: "Juno Beach, Normandy, France",
+    img: "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a5/Into_the_Jaws_of_Death_23-0455M_edit.jpg/400px-Into_the_Jaws_of_Death_23-0455M_edit.jpg",
+    sig: "Canada was assigned its own landing zone, Juno Beach, and fought under Canadian commanders on D-Day. By the end of the day, Canadian forces had advanced farther inland than any other Allied contingent. This was not a supporting role: Canada participated as a full and equal partner in the largest seaborne assault in history, planning its own objectives and executing them independently."
+  },
+  {
+    num: 14,
+    year: "1941-45",
+    title: "The Holocaust",
+    date: "1941 to 1945, liberation in 1945",
+    location: "Occupied Europe",
+    img: "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4d/Buchenwald_Slave_Laborers_Liberation.jpg/400px-Buchenwald_Slave_Laborers_Liberation.jpg",
+    sig: "When Allied forces liberated the concentration camps in 1945, the full scale of the Nazi genocide became clear. For Canada, this revelation brought its prewar refusal to accept Jewish refugees into painful focus. The national reckoning that followed accelerated changes to immigration policy and pushed Canada toward a more explicit commitment to human rights, values that would gradually become central to how the country understood itself."
+  },
+  {
+    num: 15,
+    year: "1945-46",
+    title: "And Justice",
+    date: "November 1945 to October 1946",
+    location: "Nuremberg, Germany",
+    img: "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e0/Nuremberg_Trials_retouched.jpg/400px-Nuremberg_Trials_retouched.jpg",
+    sig: "Canada participated in the Nuremberg Trials, which established the principle that individuals bear personal accountability for war crimes and crimes against humanity. Canada also helped found the United Nations in 1945. Together, these commitments marked Canada's emergence as an independent voice in shaping the postwar world order: a nation with its own foreign policy, its own principles, and its own place among nations."
+  }
+];
+
+const tl = document.getElementById('tl');
+
+events.forEach((e, i) => {
+  const onLeft = i % 2 === 0;
+  const row = document.createElement('div');
+  row.className = 'ev-row';
+
+  const card = `
+    <div class="ev-card">
+      <div class="card-top">
+        <div class="card-title">${e.title}</div>
+        <div class="card-sub">${e.date}</div>
+        <div class="card-hint">Click to expand</div>
+      </div>
+      <div class="card-body">
+        <img class="card-img" src="${e.img}" alt="${e.title}"
+          onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+        <div class="img-fail">&#10022;</div>
+        <div class="card-details">
+          <div class="detail-row">
+            <div class="d-item">
+              <div class="d-label">Date</div>
+              <div class="d-val">${e.date}</div>
+            </div>
+            <div class="d-item">
+              <div class="d-label">Location</div>
+              <div class="d-val">${e.location}</div>
+            </div>
+          </div>
+          <div class="sig-label">Significance</div>
+          <p class="sig-body">${e.sig}</p>
+          <div class="close-wrap">
+            <button class="close-btn" onclick="closeRow(this)">Close</button>
+          </div>
+        </div>
+      </div>
+    </div>`;
+
+  const mid = `
+    <div class="ev-mid">
+      <div class="dot" aria-label="Event ${e.num}">${e.num}</div>
+      <div class="yr-tag">${e.year}</div>
+    </div>`;
+
+  if (onLeft) {
+    row.innerHTML = `<div class="ev-left">${card}</div>${mid}<div class="ev-right"></div>`;
+  } else {
+    row.innerHTML = `<div class="ev-left"></div>${mid}<div class="ev-right">${card}</div>`;
+  }
+
+  tl.appendChild(row);
+
+  const dot     = row.querySelector('.dot');
+  const preview = row.querySelector('.card-top');
+
+  dot.addEventListener('click',     () => toggleRow(row));
+  preview.addEventListener('click', () => toggleRow(row));
+});
+
+function toggleRow(row) {
+  const wasOpen = row.classList.contains('open');
+  document.querySelectorAll('.ev-row.open').forEach(r => r.classList.remove('open'));
+  if (!wasOpen) {
+    row.classList.add('open');
+    setTimeout(() => row.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 60);
+  }
+}
+
+function closeRow(btn) {
+  btn.closest('.ev-row').classList.remove('open');
+}
+
+// Scroll-triggered fade in
+const io = new IntersectionObserver(entries => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      entry.target.classList.add('vis');
+      io.unobserve(entry.target);
+    }
+  });
+}, { threshold: 0.08 });
+
+document.querySelectorAll('.ev-row').forEach(r => io.observe(r));
+</script>
+</body>
+</html>
